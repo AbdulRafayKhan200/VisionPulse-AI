@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VisionPulse AI | Object Intelligence</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0b0f19 0%, #111827 100%);
+      --panel-bg: rgba(31, 41, 55, 0.6);
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background: var(--bg-gradient); color: var(--text-main); min-height: 100vh; padding: 2rem; }
+
+    .header { text-align: center; margin-bottom: 2.5rem; }
+    .header h1 { font-size: 2.5rem; font-weight: 700; background: linear-gradient(90deg, #10b981, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .header p { color: var(--text-muted); margin-top: 0.5rem; }
+
+    .app-container { display: grid; grid-template-columns: 380px 1fr; gap: 2rem; max-width: 1400px; margin: 0 auto; }
+    @media (max-width: 968px) { .app-container { grid-template-columns: 1fr; } }
+
+    .control-panel { background: var(--panel-bg); backdrop-filter: blur(12px); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem; height: fit-content; }
+    
+    .form-group { margin-bottom: 1.2rem; }
+    label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); }
+    
+    .file-input-wrapper { border: 2px dashed var(--border-color); border-radius: 12px; padding: 2rem 1rem; text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(0,0,0,0.2); }
+    .file-input-wrapper:hover { border-color: var(--accent); background: rgba(16, 185, 129, 0.05); }
+    
+    input[type="text"] { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: 8px; color: #fff; font-size: 0.9rem; }
+    input[type="text"]:focus { outline: none; border-color: var(--accent); }
+
+    .btn-submit { width: 100%; background: var(--accent); color: #000; font-weight: 600; border: none; padding: 0.85rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-size: 1rem; margin-top: 0.5rem; }
+    .btn-submit:hover { background: var(--accent-hover); color: #fff; }
+
+    .preview-panel { background: var(--panel-bg); backdrop-filter: blur(12px); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 500px; position: relative; }
+    
+    .canvas-container { position: relative; max-width: 100%; overflow: hidden; border-radius: 12px; }
+    canvas { display: block; max-width: 100%; height: auto; }
+
+    .stats-badge { position: absolute; top: 1rem; right: 1rem; background: rgba(0,0,0,0.7); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.85rem; color: var(--accent); display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>VisionPulse AI Engine</h1>
+    <p>Next-Gen Zero-Shot Object Detection System</p>
+  </div>
+
+  <div class="app-container">
+    <!-- Left Controls -->
+    <div class="control-panel">
+      <div class="form-group">
+        <label>Upload Image Target</label>
+        <div class="file-input-wrapper" onclick="document.getElementById('imageInput').click()">
+          <span id="fileNameDisplay" style="color: var(--text-muted); font-size: 0.9rem;">Click to select file</span>
+          <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Detection Prompts (Comma Separated)</label>
+        <input type="text" id="promptInput" value="person, car, phone, chair" placeholder="e.g. cat, dog, laptop">
+      </div>
+
+      <button class="btn-submit" onclick="runDetection()" id="submitBtn">Run Vision Detection</button>
+    </div>
+
+    <!-- Right Canvas Display -->
+    <div class="preview-panel">
+      <div class="stats-badge" id="statsBadge">Objects Detected: <span id="objectCount">0</span></div>
+      <div class="canvas-container" id="canvasWrapper">
+        <p style="color: var(--text-muted);" id="placeholderText">Upload an image and run detection to preview results.</p>
+        <canvas id="outputCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedImage = null;
+
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (file) {
+        selectedImage = file;
+        document.getElementById('fileNameDisplay').innerText = file.name;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.getElementById('outputCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            document.getElementById('placeholderText').style.display = 'none';
+          }
+          img.src = e.target.result;
+        }
+        reader.readAsDataURL(file);
+      }
+    }
+
+    async function runDetection() {
+      if (!selectedImage) {
+        alert('Please select an image first!');
+        return;
+      }
+
+      const btn = document.getElementById('submitBtn');
+      btn.innerText = 'Analyzing Image...';
+      btn.disabled = true;
+
+      const formData = new FormData();
+      formData.append('file', selectedImage);
+      formData.append('prompt', document.getElementById('promptInput').value);
+
+      try {
+        const response = await fetch('/detect', { method: 'POST', body: formData });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+          drawDetections(data.detections);
+        } else {
+          alert('Error: ' + data.message);
+        }
+      } catch (err) {
+        alert('Failed to connect to backend.');
+      } finally {
+        btn.innerText = 'Run Vision Detection';
+        btn.disabled = false;
+      }
+    }
+
+    function drawDetections(detections) {
+      const canvas = document.getElementById('outputCanvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Clear & redraw base image
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+
+          // Draw Bounding Boxes with Neon Accent
+          detections.forEach(det => {
+            const [xmin, ymin, xmax, ymax] = det.box;
+            const width = xmax - xmin;
+            const height = ymax - ymin;
+
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(xmin, ymin, width, height);
+
+            ctx.fillStyle = '#10b981';
+            ctx.font = 'bold 18px "Plus Jakarta Sans", sans-serif';
+            const labelText = `${det.label} (${Math.round(det.score * 100)}%)`;
+            const textWidth = ctx.measureText(labelText).width;
+
+            ctx.fillRect(xmin, ymin - 30 > 0 ? ymin - 30 : ymin, textWidth + 12, 30);
+            ctx.fillStyle = '#000000';
+            ctx.fillText(labelText, xmin + 6, ymin - 30 > 0 ? ymin - 9 : ymin + 21);
+          });
+
+          document.getElementById('statsBadge').style.display = 'block';
+          document.getElementById('objectCount').innerText = detections.length;
+        }
+        img.src = e.target.result;
+      }
+      reader.readAsDataURL(selectedImage);
+    }
+  </script>
+</body>
+</html>

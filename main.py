@@ -4,6 +4,8 @@ from PIL import Image
 import torch
 from transformers import OwlViTProcessor, OwlViTForObjectDetection
 import io
+import os
+import uvicorn
 
 app = FastAPI(title="VisionPulse AI")
 
@@ -53,3 +55,7 @@ async def detect_objects(file: UploadFile = File(...), prompt: str = Form("objec
     
     except Exception as e:
         return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
